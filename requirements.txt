@@ -11,6 +11,7 @@ langchain-core
 langchain-groq
 langchain-openai
 langchain-huggingface
+langchain-google-genai==2.1.8
 chromadb
 pypdf
 openai
@@ -19,3 +20,6 @@ streamlit
 faiss-cpu
 PyMuPDF
 networkx
+python-dotenv
+ipykernel
+structlog
