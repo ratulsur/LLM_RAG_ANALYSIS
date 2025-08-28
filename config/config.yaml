@@ -2,8 +2,10 @@ faiss_db:
   collection_yaml: "document_portal"
 
 embedding_model:
-  provider: "google"
-  model_name: "models/text-embedding-004"
+  embedding_model:
+  provider: huggingface
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+
 
 retriever:
   top_k: 10

@@ -3,10 +3,10 @@ import sys
 from pathlib import Path
 from logger.custom_logger import CustomLogger
 from exception.custom_exception import DocumentPortalException
-import fitz  # PyMuPDF
+import fitz  
 
 class DocumentIngestion:
-    def __init__(self, base_dir:str = "/Users/ratulsur/Desktop/all_data/document_portal/data/document_compare"):
+    def __init__(self, base_dir: str = "/Users/ratulsur/Desktop/all_data/document_portal/data/document_compare"):
         self.log = CustomLogger.get_logger(__name__)
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -15,11 +15,11 @@ class DocumentIngestion:
         try:
             for file in self.base_dir.glob("*.pdf"):
                 file.unlink()
-            self.log.info("All existing PDF files deleted", directory=str(self.base_dir))
+            self.log.info("All existing PDF files deleted | directory=%s", self.base_dir)
 
         except Exception as e:
-            self.log.error(f"Error deleting files: {e}")
-            raise DocumentPortalException("Error deleting existing PDFs", sys)
+            self.log.error("Error deleting files in %s | error=%s", self.base_dir, e)
+            raise DocumentPortalException("Error deleting existing PDFs", sys) from e
 
     def save_uploaded_files(self, reference_file, actual_file):
         try:
@@ -37,11 +37,11 @@ class DocumentIngestion:
             with open(act_path, "wb") as f:
                 f.write(actual_file.getbuffer())
 
-            self.log.info("Files saved successfully", reference=str(ref_path), actual=str(act_path))
+            self.log.info("Files saved successfully | reference=%s | actual=%s", ref_path, act_path)
             return ref_path, act_path
 
         except Exception as e:
-            self.log.error(f"Error saving files: {e}")
+            self.log.error("Error saving files: %s", e)
             raise DocumentPortalException("Error saving uploaded files", sys) from e
 
     def read_pdf(self, pdf_path: Path) -> str:
@@ -55,10 +55,10 @@ class DocumentIngestion:
                     text = page.get_text()
                     if text.strip():
                         all_text.append(f"\n--- Page {page_num + 1} ---\n{text}")
-                self.log.info("PDF read successfully", file=str(pdf_path), pages=len(all_text))
+                self.log.info("PDF read successfully | file=%s | pages=%s", pdf_path, len(all_text))
                 return "\n".join(all_text)
         except Exception as e:
-            self.log.error(f"Error reading PDF: {e}")
+            self.log.error("Error reading PDF %s: %s", pdf_path, e)
             raise DocumentPortalException("Error reading PDF document", sys) from e
         
     def combine_documents(self) -> str:
@@ -67,19 +67,18 @@ class DocumentIngestion:
             doc_parts = []
 
             for filename in sorted(self.base_dir.iterdir()):
-                if filename.is_file() and filename.suffix ==".pdf":
+                if filename.is_file() and filename.suffix == ".pdf":
                     content_dict[filename.name] = self.read_pdf(filename)
 
             for filename, content in content_dict.items():
                 doc_parts.append(f"Document:{filename}\n{content}")
 
             combined_text = "\n\n".join(doc_parts)
-            self.log.info("Documents combined", count = len(doc_parts))
+            self.log.info("Documents combined | count=%s", len(doc_parts))
             return combined_text
         
         except Exception as e:
-            self.log.error(f"Error saving files: {e}")
-            raise DocumentPortalException("Error occurred while combining", sys)
-        
+            self.log.error("Error combining documents: %s", e)
+            raise DocumentPortalException("Error occurred while combining", sys) from e
 
 

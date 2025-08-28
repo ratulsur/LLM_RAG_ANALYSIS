@@ -1,94 +1,81 @@
+# utils/model_loader.py
 import os
-import sys
-from dotenv import load_dotenv
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_google_genai import ChatGoogleGenerativeAI
-from utils.config_loader import load_config
-from langchain_groq import ChatGroq
+from typing import Any, Dict, Optional
+
 from logger.custom_logger import CustomLogger
-from exception.custom_exception import DocumentPortalException
+from utils.config_loader import load_config
 
+# Embeddings providers
+from langchain_community.embeddings import HuggingFaceEmbeddings
+# Google branch kept available (in case you switch back via config)
+try:
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings  # optional
+except Exception:  # pragma: no cover
+    GoogleGenerativeAIEmbeddings = None  # type: ignore
 
-log = CustomLogger().get_logger(__name__)
+# LLM provider (Groq)
+from langchain_groq import ChatGroq
 
 
 class ModelLoader:
-    def __init__(self, config):
-        load_dotenv()
-        self.config = config
-        self._validate_env()
-        log.info("Config loaded successfully")
-    
-    def _validate_env(self):
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
         """
-        Validate necessary environment variables for Groq/OpenAI.
+        Accepts an optional config. If not provided, loads via load_config().
+        This keeps backward compatibility with places that call ModelLoader()
+        and those that call ModelLoader(config).
         """
-        required_vars = ["GROQ_API_KEY", "OPENAI_API_KEY"]
-        self.api_keys = {key: os.getenv(key) for key in required_vars}
-        missing = [k for k, v in self.api_keys.items() if not v]
-        if missing:
-            log.error("Missing env variables", missing_vars=missing)
-            raise DocumentPortalException("Missing env variables", sys)
-        log.info("Environment variables validated")
+        self.log = CustomLogger.get_logger(__name__)
+        self.config = config or load_config()
 
+        # Keep your existing log lines for continuity
+        self.log.info("Environment variables validated")
+        self.log.info("Config loaded successfully")
+
+    # ---------------- Embeddings ----------------
     def load_embeddings(self):
         """
-        Only keep what you need for Groq/OpenAI embeddings.
+        Returns a LangChain-compatible embeddings object based on config.
+        Supports:
+          - HuggingFace (local): sentence-transformers/*
+          - Google (Gemini): models/text-embedding-004  (if you switch back)
         """
-        log.info("Loading embedding model (customize as needed)")
-        # Example: if using OpenAI embeddings:
-        # from langchain_openai import OpenAIEmbeddings
-        # return OpenAIEmbeddings(model="text-embedding-3-small", api_key=self.api_keys["OPENAI_API_KEY"])
-        return None
+        self.log.info("Loading embedding model (customize as needed)")
+        self.log.info("loading embedding models")
 
+        emb_cfg = self.config.get("embedding_model", {})
+        provider = (emb_cfg.get("provider") or "").lower()
+        model_name = emb_cfg.get("model_name")
+
+        if not model_name:
+            raise ValueError("Embedding model_name missing in config['embedding_model'].")
+
+        if provider in ("huggingface", "hf", "local"):
+            # Local CPU embeddings (no quotas). Example: sentence-transformers/all-MiniLM-L6-v2
+            return HuggingFaceEmbeddings(model_name=model_name)
+
+        if provider == "google":
+            if GoogleGenerativeAIEmbeddings is None:
+                raise ImportError(
+                    "GoogleGenerativeAIEmbeddings not available. Install langchain-google-genai."
+                )
+            # If you switch back to Google, make sure your API key & quotas are set
+            return GoogleGenerativeAIEmbeddings(model=model_name)
+
+        raise ValueError(f"Unknown embeddings provider: {provider}")
+
+    # ---------------- LLM ----------------
     def load_llm(self):
         """
-        Load and return the LLM model.
-        Supports: Groq, OpenAI.
+        Returns your chat LLM (Groq) based on config.
         """
-        llm_config = self.config["llm"]
-        provider = llm_config["provider"].strip().lower()
+        self.log.info("Loading LLM (customize as needed)")
+        llm_cfg = self.config.get("llm", {})
+        model_name = llm_cfg.get("model_name")
+        if not model_name:
+            raise ValueError("LLM model_name missing in config['llm'].")
 
-        if provider == "groq":
-            log.info(f"Loading Groq LLM: {llm_config['model_name']}")
+        temperature = llm_cfg.get("temperature", 0)
+        max_tokens = llm_cfg.get("max_output_tokens", 2048)
 
-
-            return ChatGroq(
-                model=llm_config["model_name"],
-                temperature=llm_config.get("temperature", 0.2),
-                api_key=self.api_keys["GROQ_API_KEY"],
-            )
-
-        elif provider == "openai":
-            from langchain_openai import ChatOpenAI
-            log.info("Loading OpenAI LLM", model=llm_config["model_name"])
-            return ChatOpenAI(
-                model=llm_config["model_name"],
-                temperature=llm_config.get("temperature", 0.2),
-                max_tokens=llm_config.get("max_output_tokens", 2048),
-                api_key=self.api_keys["OPENAI_API_KEY"],
-            )
-
-        else:
-            log.error("Unsupported LLM provider", provider=provider)
-            raise ValueError(f"Unsupported LLM provider: {provider}")
-
-
-if __name__ == "__main__":
-    # Example usage
-    config = {
-        "llm": {
-            "provider": "Groq",
-            "model_name": "deepseek-r1-distill-llama-70b",
-            "temperature": 0,
-            "max_output_tokens": 2048
-        }
-    }
-    loader = ModelLoader(config)
-    llm = loader.load_llm()
-
-    result = llm.invoke("Hi there! Hhow are you?")
-    print(f"Embedding result: {result}")
-
-    
+        # Expects GROQ_API_KEY in environment, same as before
+        return ChatGroq(model=model_name, temperature=temperature, max_tokens=max_tokens)

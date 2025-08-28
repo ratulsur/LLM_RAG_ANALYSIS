@@ -11,7 +11,7 @@ class DocumentIngestion:
     def __init__(self):
         self.log = CustomLogger.get_logger(__name__)
 
-        # ✅ create a unique session folder each run
+        #  create a unique session folder each run
         session_name = f"session_{datetime.now():%Y%m%d_%H%M%S}"
         self.base_dir = Path(
             "/Users/ratulsur/Desktop/all_data/document_portal/data/document_compare"
