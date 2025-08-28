@@ -63,9 +63,15 @@ class ConversationalRAG:
             self.log.error("Some error in loading the retrieval", error=str(e))
             raise DocumentPortalException("Retry creating the retriever", sys)
     
-    def invoke(self):
+    def invoke(self, user_input:str, chat_history:Optional[List[BaseMessage]]=None)->str:
         try:
-            pass
+            chat_history = chat_history or []
+            payload = {"input":user_input, "chat_history":chat_history}
+            answer = self.chain.invoke(payload)
+            if not answer:
+                self.log.warning("no answer generated")
+                return "no answer generated"
+            self.log.info("chain invoked successfully")
         except Exception as e:
             self.log.error("Some error in invoking", error=str(e))
             raise DocumentPortalException("Retry invoking", sys)
