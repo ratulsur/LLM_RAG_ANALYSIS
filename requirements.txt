@@ -23,3 +23,6 @@ networkx
 python-dotenv
 ipykernel
 structlog
+fastapi
+uvicorn
+python-multipart

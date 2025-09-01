@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 class CustomLogger:
-    log_file_path = None  # keep track of where logs go
+    log_file_path = None  
 
     @staticmethod
     def configure_logger():
