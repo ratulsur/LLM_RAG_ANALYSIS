@@ -3,24 +3,32 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from typing import Any,Dict
+from typing import Any, Dict
+from pathlib import Path  
 
-app = FastAPI(title = "Document Portal API", version = "0.1")
+app = FastAPI(title="Document Portal API", version="0.1")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],        
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
-
+    allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="../static"), name="static")
-templates = Jinja2Templates(directory="../templates")
+# --- Paths ---
+from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent  
+
+app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "static"), name="static")
+templates = Jinja2Templates(directory=PROJECT_ROOT / "templates")
+
+
+# --- Routes ---
 @app.get("/", response_class=HTMLResponse)
-async def serve_ui(request:Request):
+async def serve_ui(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/health")
@@ -28,34 +36,33 @@ def health() -> Dict[str, str]:
     return {"status": "ok", "service": "document-portal"}
 
 @app.post("/analyze")
-async def analyze_document(file: UploadFile = File(...))-> Any:
+async def analyze_document(file: UploadFile = File(...)) -> Any:
     try:
-        pass
-    except HTTPException:
+        # TODO: implement analysis
+        return {"ok": True, "detail": "analysis stub"}
+    except Exception as e:  # 
         raise HTTPException(status_code=500, detail=f"Analysis failed: {e}")
-    
+
 @app.post("/compare")
-async def compare_documents(reference:UploadFile = File(...))->Any:
+async def compare_documents(reference: UploadFile = File(...)) -> Any:
     try:
-        pass
+        # TODO: implement comparison
+        return {"ok": True, "detail": "compare stub"}
     except Exception as e:
-        raise HTTPException(status_code=500,detail=f"comparison failed: {e}")
-    
+        raise HTTPException(status_code=500, detail=f"comparison failed: {e}")
+
 @app.post("/chat/index")
-async def chat_build_index()-> Any:
+async def chat_build_index() -> Any:
     try:
-        pass
+        # TODO: implement indexing
+        return {"ok": True, "detail": "index stub"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"indexing failed: {e}")
-    
+
 @app.post("/chat/query")
-async def chat_query():
+async def chat_query() -> Any:
     try:
-        pass
+        # TODO: implement query
+        return {"ok": True, "detail": "query stub"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Query failed:{e}")
-    
-
-    
-
-
+        raise HTTPException(status_code=500, detail=f"Query failed: {e}")
