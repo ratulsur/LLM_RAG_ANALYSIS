@@ -35,13 +35,5 @@ class CustomLogger:
         return CustomLogger.log_file_path
 
     @staticmethod
-    def get_logger(name):
+    def get_logger(name: str = "document_portal"):   
         return logging.getLogger(name)
-
-
-# Test logger
-if __name__ == "__main__":
-    path = CustomLogger.configure_logger()
-    log = CustomLogger.get_logger(__name__)
-    log.info("Logger initialized in main.")
-    print(f"Logs are being written to: {path}")
