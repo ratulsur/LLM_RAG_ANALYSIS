@@ -198,7 +198,7 @@ class DocHandler:
             self.log.info("PDF saved successfully", file=filename, save_path=save_path, session_id=self.session_id)
             return save_path
         except Exception as e:
-            log.error("Failed to save PDF", error=str(e), session_id=self.session_id)
+            self.log.error("Failed to save PDF", error=str(e), session_id=self.session_id)
             raise DocumentPortalException(f"Failed to save PDF: {str(e)}", e) from e
 
     def read_pdf(self, pdf_path: str) -> str:

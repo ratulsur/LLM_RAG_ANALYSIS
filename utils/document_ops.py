@@ -55,7 +55,7 @@ class FastAPIFileAdapter:
 
 def read_pdf_via_handler(handler, path: str) -> str:
     if hasattr(handler, "read_pdf"):
-        return handler.read_pdf(path)  # type: ignore
+        return handler.read_pdf(path)  
     if hasattr(handler, "read_"):
-        return handler.read_(path)  # type: ignore
+        return handler.read_(path)  
     raise RuntimeError("DocHandler has neither read_pdf nor read_ method.")
