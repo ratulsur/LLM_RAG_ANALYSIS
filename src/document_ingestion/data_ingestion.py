@@ -33,7 +33,7 @@ class FaissManager:
             try:
                 self._meta = json.loads(self.meta_path.read_text(encoding="utf-8")) or {"rows": {}} # load it if alrady there
             except Exception:
-                self._meta = {"rows": {}} # init the empty one if dones not exists
+                self._meta = {"rows": {}} 
         
 
         self.model_loader = model_loader or ModelLoader()
@@ -125,10 +125,10 @@ class ChatIngestor:
         
     def _resolve_dir(self, base: Path):
         if self.use_session:
-            d = base / self.session_id # e.g. "faiss_index/abc123"
-            d.mkdir(parents=True, exist_ok=True) # creates dir if not exists
+            d = base / self.session_id 
+            d.mkdir(parents=True, exist_ok=True) 
             return d
-        return base # fallback: "faiss_index/"
+        return base 
         
     def _split(self, docs: List[Document], chunk_size=1000, chunk_overlap=200) -> List[Document]:
         splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
@@ -150,7 +150,7 @@ class ChatIngestor:
             
             chunks = self._split(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
             
-            ## FAISS manager very very important class for the docchat
+            
             fm = FaissManager(self.faiss_dir, self.model_loader)
             
             texts = [c.page_content for c in chunks]
