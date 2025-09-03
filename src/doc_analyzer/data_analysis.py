@@ -8,9 +8,8 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain.output_parsers import OutputFixingParser
 from prompt.prompt_library import PROMPT_REGISTRY
 
-
-CustomLogger.configure_logger()  
-
+# keep your existing logger boot
+CustomLogger.configure_logger()
 log = CustomLogger.get_logger(__name__)
 log.info("Logger started for data_analysis")
 
@@ -22,21 +21,22 @@ class DocumentAnalyzer:
     """
 
     def __init__(self, config):
-        self.log = CustomLogger().get_logger(__name__)
+        # keep module-level boot, but also have an instance logger
+        self.log = CustomLogger.get_logger(__name__)
         try:
             self.loader = ModelLoader(config)
-            self.llm = self.loader.load_llm()  
+            self.llm = self.loader.load_llm()
             self.parser = JsonOutputParser(pydantic_object=MetaData)
             self.fixing_parser = OutputFixingParser.from_llm(parser=self.parser, llm=self.llm)
             self.prompt = PROMPT_REGISTRY["document_analysis"]
 
             self.log.info("DocumentAnalyzer initialized successfully")
-
         except Exception as e:
-            self.log.error(f"Error initializing the document analyzer: {e}")
-            raise DocumentPortalException("error in DocumentAnalyzer", sys)
+            # Avoid kwargs/extra; include details in the string and log traceback
+            self.log.exception(f"Error initializing the document analyzer: {e}")
+            # Propagate the real exception as the cause
+            raise DocumentPortalException("error in DocumentAnalyzer", e) from e
 
-    
     def analyze_document(self, document_text: str) -> dict:
         """
         Analyze a document and extract metadata and create summary.
@@ -47,19 +47,20 @@ class DocumentAnalyzer:
 
             response = chain.invoke({
                 "format_instructions": self.parser.get_format_instructions(),
-                "document_text": document_text 
+                "document_text": document_text
             })
 
-            self.log.info("Metadata analysis performed successfully!", extra={"keys": list(response.keys())})
+            # No 'extra' kwarg; just stringify what you want to see
+            try:
+                keys = list(response.keys()) if hasattr(response, "keys") else "n/a"
+            except Exception:
+                keys = "n/a"
+            self.log.info(f"Metadata analysis performed successfully! | keys={keys}")
+
             return response
 
         except Exception as e:
-            self.log.error("Metadata Analysis failed", extra={"error": str(e)})
-            raise DocumentPortalException("Metadata extraction failed", str(e))
-
-
-        
-
-
-        
-    
+            # Capture full traceback
+            self.log.exception(f"Metadata Analysis failed: {e}")
+            # Preserve original exception as context
+            raise DocumentPortalException("Metadata extraction failed", e) from e

@@ -6,6 +6,13 @@ from fastapi.templating import Jinja2Templates
 from typing import Optional, List, Any, Dict
 from pathlib import Path
 import os
+import json, traceback
+from logger import GLOBAL_LOGGER as log
+from typing import Any, Dict
+from fastapi import HTTPException, UploadFile, File
+from utils.document_ops import FastAPIFileAdapter
+from src.document_ingestion.data_ingestion import DocHandler
+from src.doc_analyzer.data_analysis import DocumentAnalyzer
 
 from src.document_ingestion.data_ingestion import (
     DocumentComparator,
@@ -53,20 +60,70 @@ def _read_pdf_via_handler(handler: DocHandler, path: str) -> str:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error handling PDF: {str(e)}")
 
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
+import traceback
+from logger import GLOBAL_LOGGER as log
+# ... your other imports ...
+
+def _read_pdf_via_handler(handler: DocHandler, path: str) -> str:
+    try:
+        return handler.read_pdf(path)
+    except Exception as e:
+        log.error("read_pdf failed", error=str(e), traceback=traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error handling PDF: {e}")
+
 @app.post("/analyze")
-async def analyze_document(file: UploadFile = File(...)) -> Any:
+async def analyze_document(file: UploadFile = File(...)) -> Dict[str, Any]:
+    # 1) Save + read PDF
     try:
         dh = DocHandler()
         saved_path = dh.save_pdf(FastAPIFileAdapter(file))
-        text = _read_pdf_via_handler(dh, saved_path)
+        log.info(f"[analyze] saved to {saved_path}")
+        text = dh.read_pdf(saved_path)
+        log.info(f"[analyze] read {len(text)} chars")
+    except Exception as e:
+        log.error(f"[analyze] save/read failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=400, detail=f"PDF processing failed: {e}")
 
-        analyzer = DocumentAnalyzer()
-        result = analyzer.analyze_document(text)  
+    # 2) Run analysis
+    try:
+        analyzer = DocumentAnalyzer(config={})
+        result = analyzer.analyze_document(text)
+        log.info("[analyze] analyzer finished")
+    except Exception as e:
+        log.error(f"[analyze] analyzer failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Analyzer failed: {e}")
 
-        
-        return JSONResponse(content=result)
-    except Exception as e:  
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {e}")
+    # 3) Make the result JSON-safe
+    try:
+        if hasattr(result, "model_dump"):            # pydantic v2
+            result = result.model_dump()
+        elif hasattr(result, "dict"):                # pydantic v1
+            result = result.dict()
+        elif hasattr(result, "to_dict"):             # pandas/other
+            result = result.to_dict()
+        elif hasattr(result, "to_json"):             # returns JSON string
+            result = json.loads(result.to_json())
+        elif type(result).__name__ in ("DataFrame", "Series"):
+            try:
+                import pandas as pd
+                if isinstance(result, pd.DataFrame):
+                    result = result.to_dict(orient="records")
+                else:
+                    result = str(result)
+            except Exception:
+                result = str(result)
+    except Exception as e:
+        log.error(f"[analyze] serialization failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Serialization failed: {e}")
+
+    # 4) Return
+    return {
+        "filename": file.filename,
+        "chars": len(text),
+        "analysis": result,
+    }
 
 @app.post("/compare")
 async def compare_documents(
