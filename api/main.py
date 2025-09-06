@@ -24,6 +24,14 @@ from utils.document_ops import FastAPIFileAdapter
 from src.doc_analyzer.data_analysis import DocumentAnalyzer
 from src.doc_compare.document_comparer import DocumentComparerLLM
 from src.document_chat.retrieval import ConversationalRAG
+import logging
+
+
+logging.getLogger("aiohttp").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("openai").setLevel(logging.ERROR)
+logging.getLogger("groq").setLevel(logging.ERROR)
+
 
 app = FastAPI(title="Document Portal API", version="0.1")
 
